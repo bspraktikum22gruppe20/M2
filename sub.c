@@ -61,47 +61,6 @@ int say(int client_socket, char *s) {
 }
 
 
-int tokenize(char *str, char *p1, char *p2, char *p3) {
-    int count = 0;
-    char *s = str;
-    if (*s != '\0') count++;
-
-    while (*s != ' ' && *s != '\0') {
-        *p1 = *s;
-        s++;
-        p1++;
-    }
-    *p1 = '\0';
-
-    if (*s != '\0') {
-        count++;
-        s++;
-    }
-    while (*s != ' ' && *s != '\0') {
-        *p2 = *s;
-        p2++;
-        s++;
-    }
-    *p2 = '\0';
-
-    if (*s != '\0') {
-        s++;
-        count++;
-    }
-    while (*s != '\0') {
-        *p3 = *s;
-        p3++;
-        s++;
-    }
-    *p3 = '\0';
-    trim(p1);
-    trim(p2);
-    trim(p3);
-    return count;
-
-}
-
-
 void trim(char *s) {
     //trim leading
     int count = 0;
@@ -129,82 +88,17 @@ void trim(char *s) {
     s[i + 1] = '\0';
 }
 
-void performDelete(char *p0, char *p1,  int sockId) {
-    //delete successful
-    if (del(p1) == 1) { //geändert
-        char msg[1024] = "Server: ";
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, "deleted\r\n");
-        say(sockId, msg);
-    } else {//delete unsuccessful
-        char msg[1024] = "Server: ";
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, "key not exists\r\n");
-        say(sockId, msg);
-
-    }
-    //=====================end of del===========================
-}
-
-void performGet(char *p0, char *p1, int sockId) {
-    //=====================GET==================================
-    char value[100];
-    int res = get(p1, value);
-    if (res == 1) {
-        //get successful
-        char msg[1024] = "Server: ";
-
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, value);
-        strcat(msg, "\r\n");
-        say(sockId, msg);//to client
-
-    } else {//get unsuccessful
-        char msg[1024] = "Server: ";
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, "key not exists");
-        strcat(msg, "\r\n");
-        say(sockId, msg);
-    }
-    //=====================end of GET===========================
-}
-
-void performPut(char *p0, char *p1, char *p2, int sockId) {
-    int res = put(p1, p2);
-    //put without override
-    if (res == 1) {
-        char msg[1024] = "Server: ";
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, p2);
-        strcat(msg, "\r\n");
-        say(sockId, msg);
-    } else {//put with override
-        char msg[1024];
-        bzero(msg, 1024);
-        strcat(msg, "Server: ");
-        strcat(msg, p0);
-        strcat(msg, ":");
-        strcat(msg, p1);
-        strcat(msg, ":");
-        strcat(msg, p2);
-        strcat(msg, "\r\n");
-        say(sockId, msg);
-    }
+void printMessageToClient(char *com, char *key, char *value, int sockId) {
+    char msg[1024];
+    bzero(msg, 1024);
+    strcat(msg, "Server: ");
+    strcat(msg, com);
+    strcat(msg, ":");
+    strcat(msg, key);
+    strcat(msg, ":");
+    strcat(msg, value);
+    strcat(msg, "\r\n");
+    say(sockId, msg);
 }
 
 void disconnetFormServer(int sockId) {
@@ -223,6 +117,38 @@ int printStartingMessage(int sockId) {
     return -1;
 }
 
+void performPUT(char *key, char *value, int sockId) {
+    if (key != NULL && value != NULL) {
+        int res = put(key, value);
+        if (res == -1) {
+            //put with override
+            strcat(value, ":overrided");
+        }
+        printMessageToClient("PUT", key, value, sockId);
+        say(sockId, "\n");
+    } else
+        say(sockId, "command not exists1\r\n");
+}
+
+void performDEL(char *key, int sockId) {
+    if (key != NULL) {
+        if (del(key) == 1) {
+            //key exists
+            printMessageToClient("DEL", key, "deleted\r\n", sockId);
+        } else say(sockId, "key not exists2\r\n");
+
+    } else say(sockId, "command not exists3\r\n");
+}
+
+void performGET(char *key, int sockId) {
+    if (key != NULL) {
+        char v[100];
+        get(key, v);
+        printMessageToClient("GET", key, v, sockId);
+        say(sockId, "\n");
+    } else say(sockId, "command not exists3\r\n");
+}
+
 
 void communicate(int new_client_socket) {
     int m = printStartingMessage(new_client_socket);
@@ -230,55 +156,25 @@ void communicate(int new_client_socket) {
         //Read data from the client
         while (1) {
             char buf[2048];
-            char p0[100];
-            char p1[100];
-            char p2[100];
             read_in(new_client_socket, buf, sizeof(buf));
-            int count = tokenize(buf, p0, p1, p2);
-            /**
-             * GET key1 ------->count = 2
-             * PUT key1 value1-------->count = 3
-             * DEL key1----->count = 2;
-             */
-            trim(p0);
-            trim(p1);
-            trim(p2);
-            if (count == 0) {
-                say(new_client_socket, "command not exists1\r\n");
+            char dl[] = " ";
+            strtok(buf, dl);
+            char *key = strtok(NULL, dl);
+            strcpy(dl, "\0");
+            char *value = strtok(NULL, dl);
+            if (key != NULL) trim(key);
+            if (value != NULL) trim(value);
+            if (strncasecmp(buf, "put", 3) == 0) {
+                performPUT(key, value, new_client_socket);
+            } else if (strncasecmp(buf, "del", 3) == 0) {
+                performDEL(key, new_client_socket);
 
-            } else if (count == 1) {
-                //if client write exit => exit from programm
-                if (strcasecmp(p0, "exit") == 0) {
-                    disconnetFormServer(new_client_socket);
-                } else {
-                    say(new_client_socket, "command not exists1\r\n");
-                }
-            } else if (count == 2) {
+            } else if (strncasecmp(buf, "get", 3) == 0) {
+                performGET(key, new_client_socket);
 
-                //=====================DEL===========================
-                if (strcasecmp(p0, "DEL") == 0) {
-                    performDelete(p0, p1, new_client_socket);
-                }
-                    //=====================GET===========================
-                else if (strcasecmp(p0, "GET") == 0) {
-                    performGet(p0, p1, new_client_socket);
+            } else if (strncasecmp(buf, "exit", 4) == 0) {
+                disconnetFormServer(new_client_socket);
 
-                } else {
-                    char server[] = "Server: ";
-                    strcat(server, "command not exists\r\n");
-                    say(new_client_socket, server);
-                }
-            }
-                //=====================PUT===========================
-            else if (count == 3) {
-                if (strcasecmp(p0, "PUT") == 0) {
-                    performPut(p0, p1, p2, new_client_socket);
-                } else {
-                    char server[] = "Server: ";
-                    strcat(server, buf);
-                    strcat(server, "command not exists\r\n");
-                    say(new_client_socket, server);
-                }
             } else {
                 say(new_client_socket, "command not exists5\r\n");
             }

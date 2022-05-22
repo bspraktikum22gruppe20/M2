@@ -21,27 +21,11 @@ void handle_shutdown(int server_socket) {
 int main() {
     signal(SIGINT, handle_shutdown);
     int numOfClient = 0;
-    //=============================================================================
-    //                                  Create socket
-    //=============================================================================
     int server_socket = open_server_socket();
-    //=============================================================================
-    //                                 Bind to  socket
-    //=============================================================================
     bind_to_port(server_socket, 5678);
-
-    //=============================================================================
-    //                     listening to incoming connection
-    //=============================================================================
     if (listen(server_socket, 10) == -1) error("Can't listen");
-
-    //create an array of struct with 100 element
     int shID = createData(100);
-    //=============================================================================
-    //                     accept new connection
-    //=============================================================================
-
-    struct sockaddr_in client_addr;// store details about the client who's just connected
+    struct sockaddr_in client_addr;
     unsigned int address_size = sizeof(client_addr);
     printf("[+]Escape character ^C\n");
     printf("[+]Waiting for Connection...\n");
@@ -61,7 +45,7 @@ int main() {
         //communication with ctelnet
         int pid;
         if ((pid = fork()) == 0) {
-            //close(server_socket);
+            close(server_socket);
             //=============================================================================
             //                     Client = child process
             //=============================================================================

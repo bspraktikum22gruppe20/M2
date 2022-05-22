@@ -40,8 +40,8 @@ void sharedMemoryDelete(int shID) {
  *
  * @param key
  * @param value
- * @return -1 if key and value already exists and we override them
- *         1  if key and value does't exits and we insert them in array
+ * @return -1 if key and value already exist and we override them
+ *         1  if key and value does't exist and we insert them in array
  */
 int put(char *key, char *value) {
     int len = numberOfentries;

@@ -16,19 +16,19 @@ int say(int, char *);
 
 void error(char *);
 
-int tokenize(char *,  char *, char *, char *);
-
 void trim(char *);
 
-void performDelete(char *, char *, int);
+void performGET(char *, int);
 
-void performGet(char *, char *, int);
+void performDEL(char *, int);
 
-void performPut(char *, char *, char *, int);
+void performPUT(char *, char *, int);
 
 void disconnetFormServer(int);
 
 int printStartingMessage(int);
+
+void printMessageToClient(char *, char *, char *, int);
 
 void communicate(int);
 
