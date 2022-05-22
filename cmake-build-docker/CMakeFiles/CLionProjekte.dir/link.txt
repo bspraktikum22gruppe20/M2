@@ -1,0 +1,1 @@
+/usr/bin/cc -g   CMakeFiles/CLionProjekte.dir/Main.c.o CMakeFiles/CLionProjekte.dir/sub.c.o  -o CLionProjekte 
